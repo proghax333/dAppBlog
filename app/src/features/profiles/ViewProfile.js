@@ -6,6 +6,7 @@ import {
   Button,
   Stack,
   Divider,
+  Snackbar,
 } from "@mui/material";
 
 import { useContracts } from "../../hooks/useContracts";
@@ -20,12 +21,28 @@ function ViewProfile({
   const [profileState, setProfileState] = useState({
     state: "loading",
   });
-  const { account } = useWeb3React();
+  const { account, library } = useWeb3React();
+  const web3 = library;
   const history = useHistory();
 
   const {
     contracts: { Blog },
   } = useContracts();
+  const isMe = id === account || id === "me";
+
+  const [open, setOpen] = useState(false);
+  const [tipState, setTipState] = useState({
+    state: "none",
+  });
+  const handleClick = () => {
+    setOpen(true);
+  };
+  const handleClose = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setOpen(false);
+  };
 
   useEffect(() => {
     async function loadProfile() {
@@ -33,9 +50,24 @@ function ViewProfile({
       if (profileId.toString().toLowerCase() === "me") {
         profileId = account;
       }
-      const profile = await Blog.api.getProfile(profileId);
+      let profile = await Blog.api.getProfile(profileId);
 
       if (profile) {
+        profile = {
+          ...profile,
+        };
+
+        if (isMe) {
+          try {
+            const pendingTips = await Blog.api.myPendingTips();
+            profile.extras = {
+              pendingTips,
+            };
+            console.log(profile.extras);
+          } catch (e) {
+            console.log("tips error", e);
+          }
+        }
         setProfileState({
           state: "loaded",
           profile,
@@ -47,7 +79,23 @@ function ViewProfile({
       }
     }
     loadProfile();
-  }, [Blog.api, account, id]);
+  }, [Blog.api, account, id, isMe]);
+
+  const withdrawTips = () => {
+    setTipState("Withdrawing the tips...");
+    async function withdraw() {
+      try {
+        await Blog.api.withdrawTips();
+        setTipState("Tips withdrawn successfully!");
+      } catch (e) {
+        console.log(e);
+
+        setTipState("Unable to withdraw tips. Try again later.");
+      }
+      handleClick();
+    }
+    withdraw();
+  };
 
   switch (profileState.state) {
     case "loading": {
@@ -67,18 +115,32 @@ function ViewProfile({
             <Stack>
               <Typography variant="h4">
                 Profile
-                {(id === account || id === "me") && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      marginLeft: "0.5rem",
-                      marginRight: "0.5rem",
-                    }}
-                    onClick={() => history.push("/profile/edit")}
-                  >
-                    Edit Profile
-                  </Button>
+                {isMe && (
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        marginLeft: "0.5rem",
+                        marginRight: "0.5rem",
+                      }}
+                      onClick={() => history.push("/profile/edit")}
+                    >
+                      Edit Profile
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        marginLeft: "0.5rem",
+                        marginRight: "0.5rem",
+                      }}
+                      onClick={withdrawTips}
+                    >
+                      Withdraw Tips
+                    </Button>
+                  </>
                 )}
               </Typography>
               <Divider />
@@ -108,9 +170,29 @@ function ViewProfile({
                     </span>
                   </div>
                 </Stack>
+                <Stack direction="row" spacing={1}>
+                  <Typography>
+                    <b>Pending Tip Withdrawals:</b>
+                  </Typography>
+                  {isMe && (
+                    <div>
+                      {web3.utils.fromWei(
+                        profileState.profile.extras.pendingTips,
+                        "ether"
+                      )}
+                      &nbsp;ETH
+                    </div>
+                  )}
+                </Stack>
               </div>
             </Stack>
           </Paper>
+          <Snackbar
+            open={open}
+            autoHideDuration={6000}
+            onClose={handleClose}
+            message={<>{tipState}</>}
+          />
         </Container>
       );
     }

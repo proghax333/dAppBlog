@@ -102,8 +102,9 @@ function loadBlogContract(web3ReactState, address) {
     }
 
     async tipPost(postId, amount) {
-      const res = await this.contract.methods.tipPost(postId, amount).send({
+      const res = await this.contract.methods.tipPost(postId).send({
         from: account,
+        value: amount,
       });
       return res;
     }

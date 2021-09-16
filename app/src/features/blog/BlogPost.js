@@ -1,19 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
 import Markdown from "./Markdown";
 import { dateFromTimestamp } from "../../utils/DateUtils";
 import { Link } from "react-router-dom";
-import { Typography, Button, Stack } from "@mui/material";
+import { Typography, Button, Stack, Snackbar } from "@mui/material";
+// import CloseIcon from "@mui/icons-material/Close";
 
 import { useWeb3React } from "@web3-react/core";
 import { useHistory } from "react-router-dom";
 import { useContracts } from "../../hooks/useContracts";
 
 function BlogPost({ post, preview = false, ...props }) {
-  const { account } = useWeb3React();
+  const { account, library } = useWeb3React();
+  const web3 = library;
   const history = useHistory();
   const {
     contracts: { Blog },
   } = useContracts();
+
+  const [open, setOpen] = useState(false);
+  const [tipState, setTipState] = useState({
+    state: "none",
+  });
+  const handleClick = () => {
+    setOpen(true);
+  };
+  const handleClose = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setOpen(false);
+  };
 
   const deletePost = async () => {
     try {
@@ -31,12 +47,29 @@ function BlogPost({ post, preview = false, ...props }) {
     history.push(`/posts/edit/${post.postId}`);
   };
 
+  const tipPost = () => {
+    setTipState("Sending the tip");
+    async function sendTip() {
+      try {
+        const amount = "0.1";
+        await Blog.api.tipPost(post.postId, web3.utils.toWei(amount, "ether"));
+        setTipState("Tip sent successfully!");
+      } catch (e) {
+        console.log(e);
+
+        setTipState("Unable to tip. Try again later.");
+      }
+      handleClick();
+    }
+    sendTip();
+  };
+
   return (
     <div>
       <Typography variant={preview ? "h4" : "h2"}>{post.title}</Typography>
       <Stack
-        xs={{
-          margin: "0 0 1rem 0",
+        sx={{
+          margin: "0 0 0.75rem 0",
         }}
         direction="row"
         alignItems="center"
@@ -59,7 +92,7 @@ function BlogPost({ post, preview = false, ...props }) {
             </span>
           </Link>
         </p>
-        {post.extras.author._address === account && (
+        {post.extras.author._address === account ? (
           <>
             <Button
               variant="outlined"
@@ -72,7 +105,6 @@ function BlogPost({ post, preview = false, ...props }) {
             >
               Edit Post
             </Button>
-
             <Button
               variant="outlined"
               size="small"
@@ -86,9 +118,21 @@ function BlogPost({ post, preview = false, ...props }) {
               Delete Post
             </Button>
           </>
+        ) : (
+          <Button
+            variant="contained"
+            size="small"
+            sx={{
+              marginLeft: "0.25rem",
+              marginRight: "0.25rem",
+            }}
+            onClick={tipPost}
+          >
+            Tip 0.1ETH
+          </Button>
         )}
       </Stack>
-      <div>
+      <div style={{}}>
         <Markdown className="markdown">
           {preview ? `${post.content.substring(0, 40)}...` : post.content}
         </Markdown>
@@ -103,6 +147,12 @@ function BlogPost({ post, preview = false, ...props }) {
           Read more...
         </Link>
       )}
+      <Snackbar
+        open={open}
+        autoHideDuration={6000}
+        onClose={handleClose}
+        message={<>{tipState}</>}
+      />
     </div>
   );
 }
