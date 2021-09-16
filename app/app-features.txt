@@ -1,0 +1,8 @@
+
+* Home page
+  - List of latest blog posts
+
+* Open and read a blog post
+
+* Dashboard
+  - Create/update/delete your own blog post

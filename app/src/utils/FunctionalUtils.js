@@ -1,0 +1,1 @@
+function asyncMap(collection, callback) {}

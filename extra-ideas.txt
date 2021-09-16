@@ -1,0 +1,21 @@
+
+
+  /**
+   * @dev Get posts of an author
+    @param _authorAddress Ethereum address of the author
+   */
+  function getPostsByAuthor(address _authorAddress) public view returns (Post[] memory) {
+    uint i = 0;
+    // wont work, dynamic arrays needed
+    Post[] memory result;
+
+    while(i < postsCount) {
+      Post memory post = posts[i];
+      if(post.author == _authorAddress) {
+        result.push(post);
+      }
+      ++i;
+    }
+
+    return result;
+  }
